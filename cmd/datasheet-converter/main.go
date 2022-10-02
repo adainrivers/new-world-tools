@@ -6,18 +6,19 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/ake-persson/mapslice-json"
-	"github.com/new-world-tools/new-world-tools/datasheet"
-	"github.com/new-world-tools/new-world-tools/internal"
-	"github.com/new-world-tools/new-world-tools/localization"
-	"github.com/new-world-tools/new-world-tools/profiler"
-	workerpool "github.com/zelenin/go-worker-pool"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ake-persson/mapslice-json"
+	"github.com/new-world-tools/new-world-tools/datasheet"
+	"github.com/new-world-tools/new-world-tools/internal"
+	"github.com/new-world-tools/new-world-tools/localization"
+	"github.com/new-world-tools/new-world-tools/profiler"
+	workerpool "github.com/zelenin/go-worker-pool"
 )
 
 const (
@@ -141,7 +142,7 @@ func main() {
 		}
 		keys[key] = true
 		id++
-		addTask(id, file)
+		addTask(id, file, inputDir)
 	}
 
 	pool.Wait()
@@ -149,14 +150,14 @@ func main() {
 	log.Printf("PeakMemory: %0.1fMb Duration: %s", float64(pr.GetPeakMemory())/1024/1024, pr.GetDuration().String())
 }
 
-func addTask(id int64, file *datasheet.DataSheetFile) {
+func addTask(id int64, file *datasheet.DataSheetFile, inputDir string) {
 	pool.AddTask(workerpool.NewTask(id, func(id int64) error {
 		log.Printf("Working: %s", file.GetPath())
 		ds, err := datasheet.Parse(file)
 		if err != nil {
 			return err
 		}
-
+		outputFileName := strings.Replace(file.GetPath(), inputDir, "", 1)
 		if format == formatCsv {
 			outputPath := filepath.Join(outputDir, ds.DataType, fmt.Sprintf("%s.csv", ds.UniqueId))
 			err = storeToCsv(ds, outputPath)
@@ -166,7 +167,8 @@ func addTask(id int64, file *datasheet.DataSheetFile) {
 		}
 
 		if format == formatJson {
-			outputPath := filepath.Join(outputDir, ds.DataType, fmt.Sprintf("%s.json", ds.UniqueId))
+			jsonFileName := strings.Replace(outputFileName, ".datasheet", ".json", 1)
+			outputPath := filepath.Join(outputDir, jsonFileName)
 			err = storeToJson(ds, outputPath)
 			if err != nil {
 				return err
